@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>htmlbook-drive — 구글 드라이브 HTML/MD 뷰어</title>
+  <meta name="description" content="구글 드라이브의 HTML·Markdown 파일을 웹에서 이쁘게 보는 뷰어">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📖</text></svg>">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">📖</span>
+      <span>htmlbook-drive</span>
+      <small>Drive HTML · MD 뷰어</small>
+    </div>
+
+    <div class="grow">
+      <input id="link-input" type="text" placeholder="구글 드라이브 공유 링크 또는 파일 ID 붙여넣기…" autocomplete="off" spellcheck="false">
+      <button id="open-link">열기</button>
+    </div>
+
+    <button id="login-btn" class="ghost" title="구글 계정으로 로그인">구글 로그인</button>
+    <button id="pick-btn" class="primary" title="드라이브에서 파일 선택">드라이브에서 열기</button>
+    <button id="theme-btn" class="icon ghost" title="라이트/다크 전환" aria-label="테마 전환">🌗</button>
+  </header>
+
+  <main>
+    <div id="banner" class="banner hidden"></div>
+
+    <!-- 빈 상태 안내 -->
+    <section id="hero" class="hero">
+      <h1>구글 드라이브의 HTML · Markdown을 이쁘게</h1>
+      <p>드라이브에 있는 <b>HTML</b> · <b>Markdown</b> 파일을 웹페이지 형태로 완벽하게 봅니다.
+         두 가지 방법 중 하나로 파일을 여세요.</p>
+      <ol>
+        <li><b>구글 로그인 → 드라이브에서 열기</b> — 내 <b>비공개</b> 파일도 공개하지 않고 선택해서 봅니다.
+            (내가 고른 파일에만 접근하는 <code>drive.file</code> 권한)</li>
+        <li><b>공유 링크 붙여넣기</b> — ‘링크가 있는 모든 사용자’로 공유된 파일을 상단 입력창에 붙여넣고 <b>열기</b>.</li>
+      </ol>
+      <p id="setup-note" class="hidden" style="margin-top:14px">
+        ⚙️ 아직 <code>config.js</code> 가 설정되지 않았습니다. 구글 연동을 쓰려면 README의 설정을 먼저 진행하세요.
+        지금은 아래 데모로 화면을 미리 볼 수 있습니다.
+      </p>
+      <div class="demo-row">
+        <button id="demo-md" class="ghost">📝 Markdown 데모 보기</button>
+        <button id="demo-html" class="ghost">🖹 HTML 데모 보기</button>
+      </div>
+    </section>
+
+    <!-- 로딩 -->
+    <div id="loading" class="loading hidden">
+      <span class="spinner"></span> 파일을 불러오는 중…
+    </div>
+
+    <!-- 렌더 결과 -->
+    <article id="viewer" class="viewer hidden">
+      <div class="doc-head">
+        <span id="doc-name" class="name">문서</span>
+        <span style="display:flex;align-items:center;gap:12px">
+          <label class="hidden" style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+            <input id="script-toggle" type="checkbox"> HTML 스크립트 실행
+          </label>
+          <span id="doc-kind" class="kind">—</span>
+        </span>
+      </div>
+      <iframe id="html-frame" class="html-frame hidden" title="HTML 문서" sandbox="allow-popups allow-forms"></iframe>
+      <div id="md-body" class="markdown-body hidden"></div>
+    </article>
+
+    <footer>
+      서버 없이 브라우저에서만 동작합니다 · 파일 접근 권한은 구글 드라이브가 관리합니다 ·
+      <a href="https://github.com/teo-kt/htmlbook-drive" target="_blank" rel="noopener">소스</a>
+    </footer>
+  </main>
+
+  <!-- 설정값 -->
+  <script src="config.js"></script>
+  <!-- 번들 라이브러리(마크다운 렌더 + 살균) -->
+  <script src="vendor/marked.min.js"></script>
+  <script src="vendor/purify.min.js"></script>
+  <!-- 구글 라이브러리(로그인 + 파일 선택창) -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://apis.google.com/js/api.js" async defer></script>
+  <!-- 앱 -->
+  <script src="app.js"></script>
+</body>
+</html>
