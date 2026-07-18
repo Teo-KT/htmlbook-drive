@@ -21,4 +21,12 @@ window.HTMLBOOK_DRIVE_CONFIG = {
 
   // Google Picker 용 앱 ID = GCP 프로젝트 번호(숫자). 예: "1234567890"
   APP_ID: "YOUR_PROJECT_NUMBER",
+
+  // (선택) 로그인 범위 확장. true 면 drive.file 대신 drive.readonly 로 로그인합니다.
+  //   - 내 드라이브의 "모든" 파일을 Picker 선택 없이 링크 붙여넣기만으로 열 수 있습니다.
+  //   - drive.readonly 는 제한(restricted) 범위라 앱을 일반 공개하려면 구글 심사가 필요하지만,
+  //     OAuth 동의 화면이 "테스트" 상태이고 본인이 테스트 사용자면 심사 없이 쓸 수 있습니다.
+  //     (로그인 시 "확인되지 않은 앱" 경고가 뜨면 "고급 → 이동"으로 계속하면 됩니다.)
+  //   - false(기본): 최소 권한. Picker 로 선택한 파일에만 접근합니다.
+  READONLY_SCOPE: false,
 };

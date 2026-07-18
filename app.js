@@ -8,7 +8,11 @@
   "use strict";
 
   var CFG = window.HTMLBOOK_DRIVE_CONFIG || {};
-  var SCOPE = "https://www.googleapis.com/auth/drive.file";
+  // 기본은 drive.file(선택한 파일만). READONLY_SCOPE 를 켜면 내 모든 파일을
+  // 링크 붙여넣기로도 열 수 있다(개인용 · 테스트 사용자 전제, config.js 참고).
+  var SCOPE = CFG.READONLY_SCOPE === true
+    ? "https://www.googleapis.com/auth/drive.readonly"
+    : "https://www.googleapis.com/auth/drive.file";
 
   // ---- 설정값 유효성 (placeholder 여부) -----------------------------------
   function isSet(v) {
@@ -287,7 +291,7 @@
     if (!accessToken) { login(); return; }
     ensurePicker().then(function () {
       var view = new google.picker.DocsView(google.picker.ViewId.DOCS)
-        .setMimeTypes("text/html,text/markdown,text/x-markdown,text/plain")
+        .setMimeTypes("text/html,text/markdown,text/x-markdown,text/plain,application/octet-stream")
         .setIncludeFolders(true)
         .setSelectFolderEnabled(false)
         .setMode(google.picker.DocsViewMode.LIST);
