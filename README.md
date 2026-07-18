@@ -127,7 +127,7 @@ python3 -m http.server 8000
 | 파일 선택 | Google Picker API |
 | 파일 읽기 | Drive API v3 `files.get?alt=media` (토큰 또는 API 키) |
 | Markdown | [marked](https://github.com/markedjs/marked) + [DOMPurify](https://github.com/cure53/DOMPurify) 살균 |
-| HTML | 샌드박스 `<iframe srcdoc>` 로 원본 서식 그대로 렌더(기본 스크립트 차단, 토글로 허용) |
+| HTML | 샌드박스 `<iframe>` + Blob URL 로 원본 서식 그대로 렌더(기본 스크립트 차단, 토글로 허용). 문서 내 `#앵커`는 프레임 안에서 이동, 외부 링크는 새 탭 |
 
 ## 한계
 

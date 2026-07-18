@@ -29,6 +29,7 @@
     pickBtn: document.getElementById("pick-btn"),
     themeBtn: document.getElementById("theme-btn"),
     scriptToggle: document.getElementById("script-toggle"),
+    widthBtn: document.getElementById("width-btn"),
     banner: document.getElementById("banner"),
     hero: document.getElementById("hero"),
     loading: document.getElementById("loading"),
@@ -195,33 +196,71 @@
       el.htmlFrame.classList.remove("hidden");
       el.mdBody.classList.add("hidden");
       el.scriptToggle.parentElement.classList.remove("hidden");
+      el.widthBtn.classList.add("hidden");
     } else {
       renderMarkdown(doc.text);
       el.mdBody.classList.remove("hidden");
       el.htmlFrame.classList.add("hidden");
       el.scriptToggle.parentElement.classList.add("hidden");
+      el.widthBtn.classList.remove("hidden");
     }
+    // HTML 문서는 화면 전체를 쓰는 앱형 레이아웃, 마크다운은 읽기 컬럼
+    document.body.classList.toggle("html-mode", type === "html");
     // 문서 상단으로 스크롤
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  var currentBlobUrl = null;
+
   function renderHtml(htmlText) {
     var allowScripts = el.scriptToggle.checked;
     // sandbox: 기본은 스크립트 차단(HTML/CSS는 그대로 렌더). 토글 시 스크립트 허용.
-    // allow-same-origin 과 allow-scripts 를 동시에 주지 않는다(보안).
+    // allow-same-origin 과 allow-scripts 는 절대 동시에 주지 않는다(샌드박스 탈출 방지).
+    //  - 스크립트 차단 모드: allow-same-origin 추가. 불투명 출처에서는 크롬이
+    //    #앵커(fragment) 이동을 무시하는 것을 실측으로 확인했고, 스크립트가 없으므로
+    //    same-origin 이어도 문서가 부모에 접근할 방법이 없다.
+    //  - 스크립트 허용 모드: 불투명 출처 유지. 앵커는 아래에서 주입하는 헬퍼가 처리.
+    // allow-popups-to-escape-sandbox: 새 탭으로 연 외부 링크는 정상 페이지로 동작.
     var sandbox = allowScripts
-      ? "allow-scripts allow-popups allow-forms allow-modals"
-      : "allow-popups allow-forms";
+      ? "allow-scripts allow-popups allow-popups-to-escape-sandbox allow-forms allow-modals"
+      : "allow-popups allow-popups-to-escape-sandbox allow-forms allow-same-origin";
     el.htmlFrame.setAttribute("sandbox", sandbox);
-    // 새 창 링크가 부모를 덮지 않도록 <base target="_blank"> 주입
-    var injected = htmlText;
-    if (!/<base\b/i.test(injected)) {
-      injected = injected.replace(/<head([^>]*)>/i, '<head$1><base target="_blank">');
-      if (injected === htmlText) {
-        injected = '<base target="_blank">' + htmlText;
+
+    // 링크 선별 처리: 문서 내 앵커(#)는 프레임 안에서 이동, 그 외에는 새 탭.
+    // (예전의 base target=_blank 일괄 주입은 목차 앵커까지 새 탭으로 보냈음)
+    var out = htmlText;
+    try {
+      var doc = new DOMParser().parseFromString(htmlText, "text/html");
+      var links = doc.querySelectorAll("a[href]");
+      for (var i = 0; i < links.length; i++) {
+        var href = links[i].getAttribute("href") || "";
+        if (href.charAt(0) === "#") continue;
+        links[i].setAttribute("target", "_blank");
+        links[i].setAttribute("rel", "noopener noreferrer");
       }
+      // 스크립트 허용 모드(불투명 출처)용 앵커 헬퍼: 문서 자체 핸들러가 처리하지
+      // 않은 #앵커 클릭을 프레임 안 스크롤로 바꾼다. 차단 모드에선 실행되지 않는다.
+      var helper = doc.createElement("script");
+      helper.textContent =
+        "(function(){document.addEventListener('click',function(ev){" +
+        "if(ev.defaultPrevented)return;" +
+        "var n=ev.target;while(n&&n.tagName!=='A')n=n.parentNode;" +
+        "if(!n)return;var h=n.getAttribute('href')||'';if(h.charAt(0)!=='#')return;" +
+        "var id;try{id=decodeURIComponent(h.slice(1));}catch(e){id=h.slice(1);}" +
+        "var t=document.getElementById(id)||document.getElementsByName(id)[0];" +
+        "if(t){ev.preventDefault();t.scrollIntoView();}},false);})();";
+      if (doc.body) doc.body.appendChild(helper);
+      out = "<!doctype html>\n" + doc.documentElement.outerHTML;
+    } catch (e) { /* 파싱 실패 시 원본 그대로 */ }
+
+    // srcdoc 대신 Blob URL 로 로드. 문서가 고유 URL 을 가지므로 #앵커 클릭이
+    // same-document 스크롤로 동작한다(srcdoc 은 부모 페이지 URL 로 해석되어 튐).
+    if (currentBlobUrl) {
+      try { URL.revokeObjectURL(currentBlobUrl); } catch (e2) {}
     }
-    el.htmlFrame.srcdoc = injected;
+    currentBlobUrl = URL.createObjectURL(new Blob([out], { type: "text/html;charset=utf-8" }));
+    el.htmlFrame.removeAttribute("srcdoc");
+    el.htmlFrame.src = currentBlobUrl;
   }
 
   function renderMarkdown(mdText) {
@@ -230,9 +269,11 @@
       ADD_ATTR: ["target"],
     });
     el.mdBody.innerHTML = clean;
-    // 링크는 새 탭에서 열기
+    // 외부 링크만 새 탭에서 열기(문서 내 앵커는 페이지 안에서 이동)
     var links = el.mdBody.querySelectorAll("a[href]");
     for (var i = 0; i < links.length; i++) {
+      var href = links[i].getAttribute("href") || "";
+      if (href.charAt(0) === "#") continue;
       links[i].setAttribute("target", "_blank");
       links[i].setAttribute("rel", "noopener noreferrer");
     }
@@ -251,6 +292,7 @@
         setLoading(false);
         showViewer(false);
         showHero(true);
+        document.body.classList.remove("html-mode");
         showBanner((e && e.message) || "파일을 여는 중 오류가 발생했습니다.", true);
       });
   }
@@ -460,6 +502,15 @@
     el.scriptToggle.addEventListener("change", function () {
       if (lastDoc) renderHtml(lastDoc.text); // 토글 시 현재 HTML 재렌더
     });
+    // 마크다운 읽기 폭 ↔ 전체 폭 토글(선호 저장)
+    el.widthBtn.addEventListener("click", function () {
+      var wide = !el.viewer.classList.contains("wide");
+      el.viewer.classList.toggle("wide", wide);
+      try { localStorage.setItem("hbd-wide", wide ? "1" : "0"); } catch (e) {}
+    });
+    try {
+      if (localStorage.getItem("hbd-wide") === "1") el.viewer.classList.add("wide");
+    } catch (e) {}
 
     // 설정 상태에 따른 버튼 활성/비활성
     el.pickBtn.disabled = true; // 로그인 전엔 비활성
@@ -499,5 +550,5 @@
   }
 
   // 테스트 훅(로컬 검증용) — 브라우저 콘솔/Playwright에서 접근
-  window.__hbd = { parseFileId: parseFileId, detectType: detectType, renderMarkdown: renderMarkdown };
+  window.__hbd = { parseFileId: parseFileId, detectType: detectType, renderMarkdown: renderMarkdown, render: render };
 })();

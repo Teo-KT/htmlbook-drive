@@ -4,7 +4,7 @@
    ========================================================================== */
 
 :root {
-  --max-read: 760px;
+  --max-read: 820px;
   --bg: #ffffff;
   --bg-soft: #f6f7f9;
   --bg-elev: #ffffff;
@@ -213,6 +213,9 @@ main { padding: 24px 16px 80px; }
 }
 .hidden { display: none !important; }
 
+/* 마크다운 전체 폭 보기(⛶ 토글) */
+.viewer.wide { max-width: none; }
+
 /* HTML 렌더용 iframe */
 iframe.html-frame {
   display: block;
@@ -221,6 +224,41 @@ iframe.html-frame {
   border: 0;
   background: #fff;
 }
+
+/* ------------------- HTML 문서 모드: 화면 전체 사용 ------------------- */
+/* HTML 파일을 열면 body 에 .html-mode 가 붙어 상단바 아래 전체가 문서가 된다.
+   스크롤은 iframe 내부에서만 일어난다. */
+body.html-mode {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+body.html-mode main {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+body.html-mode .banner { margin: 10px auto; }
+body.html-mode .viewer {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  max-width: none;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+body.html-mode iframe.html-frame {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+body.html-mode footer { display: none; }
 
 /* ------------------------------ Markdown 타이포그래피 ------------------------------ */
 .markdown-body {
@@ -303,5 +341,10 @@ footer a { color: var(--link); text-decoration: none; }
 
 @media (max-width: 600px) {
   .markdown-body { padding: 26px 20px 40px; font-size: 16.5px; }
-  .topbar { gap: 8px; }
+  .topbar { gap: 8px; padding: 8px 10px; }
+  .brand small { display: none; }
+  /* 입력창은 둘째 줄 전체 폭으로 내려 모바일에서도 붙여넣기 편하게 */
+  .topbar .grow { flex: 1 1 100%; order: 10; }
+  button { font-size: 13px; padding: 7px 10px; }
+  main { padding: 16px 10px 60px; }
 }
