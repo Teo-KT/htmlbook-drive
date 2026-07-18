@@ -48,6 +48,30 @@
   var pickerApiLoaded = false;
   // 마지막으로 연 문서(스크립트 토글 재렌더용)
   var lastDoc = null;
+  // 링크를 열려고 로그인부터 시작한 경우, 로그인 완료 후 이어서 열 파일 ID
+  var pendingFileId = null;
+
+  // ---- 토큰 보관 (새로고침 시 로그인 유지) --------------------------------
+  // 액세스 토큰(수명 ~1시간)을 sessionStorage 에 보관한다. 탭을 닫으면 사라지고,
+  // 만료 시각이 지나면 복원하지 않는다. 개인용 정적 사이트 전제의 절충.
+  function saveToken(tok, expiresInSec) {
+    try {
+      var exp = Date.now() + Math.max(0, (Number(expiresInSec) || 3600) - 60) * 1000;
+      sessionStorage.setItem("hbd-token", JSON.stringify({ t: tok, exp: exp }));
+    } catch (e) {}
+  }
+  function restoreToken() {
+    try {
+      var raw = sessionStorage.getItem("hbd-token");
+      if (!raw) return null;
+      var o = JSON.parse(raw);
+      if (!o || !o.t || Date.now() > o.exp) {
+        sessionStorage.removeItem("hbd-token");
+        return null;
+      }
+      return o.t;
+    } catch (e) { return null; }
+  }
 
   // ---- UI 상태 도우미 -----------------------------------------------------
   function showBanner(msg, isError) {
@@ -214,24 +238,13 @@
     }
   }
 
-  // ---- 공유 링크 열기 -----------------------------------------------------
-  function openFromLink() {
-    var id = parseFileId(el.linkInput.value);
-    if (!id) {
-      showBanner("드라이브 링크를 인식하지 못했습니다. 파일의 <b>공유 링크</b> 또는 파일 ID를 붙여넣어 주세요.", true);
-      return;
-    }
-    if (!HAS_API_KEY && !accessToken) {
-      showBanner(
-        "공유 링크로 열려면 <code>config.js</code> 에 <b>API 키</b>가 필요합니다. " +
-        "또는 상단의 <b>구글 로그인</b> 후 <b>드라이브에서 열기</b>를 사용하세요.", true);
-      return;
-    }
+  // ---- 파일 열기(공통) ----------------------------------------------------
+  // 로그인되어 있으면 토큰 우선(비공개 파일도 가능), 아니면 API 키
+  function loadFile(id) {
     setLoading(true);
     showHero(false);
     showViewer(false);
     hideBanner();
-    // 로그인되어 있으면 토큰 우선(비공개 파일도 가능), 아니면 API 키
     fetchDriveFile(id, accessToken)
       .then(render)
       .catch(function (e) {
@@ -240,6 +253,30 @@
         showHero(true);
         showBanner((e && e.message) || "파일을 여는 중 오류가 발생했습니다.", true);
       });
+  }
+
+  // ---- 공유 링크 열기 -----------------------------------------------------
+  function openFromLink() {
+    var id = parseFileId(el.linkInput.value);
+    if (!id) {
+      showBanner("드라이브 링크를 인식하지 못했습니다. 파일의 <b>공유 링크</b> 또는 파일 ID를 붙여넣어 주세요.", true);
+      return;
+    }
+    // 개인용(READONLY_SCOPE) 모드: 로그인 전이면 먼저 로그인하고, 끝나면 이어서 연다.
+    // (API 키만으로는 '링크 공유된' 파일만 열리므로 내 비공개 파일은 로그인이 필요)
+    if (!accessToken && HAS_OAUTH && CFG.READONLY_SCOPE === true) {
+      pendingFileId = id;
+      showBanner("내 비공개 파일도 열 수 있도록 <b>구글 로그인</b>을 먼저 진행합니다. 로그인 창에서 계정을 선택하세요.");
+      login();
+      return;
+    }
+    if (!HAS_API_KEY && !accessToken) {
+      showBanner(
+        "공유 링크로 열려면 <code>config.js</code> 에 <b>API 키</b>가 필요합니다. " +
+        "또는 상단의 <b>구글 로그인</b> 후 <b>드라이브에서 열기</b>를 사용하세요.", true);
+      return;
+    }
+    loadFile(id);
   }
 
   // ---- 구글 로그인 (GIS) --------------------------------------------------
@@ -251,10 +288,18 @@
       callback: function (resp) {
         if (resp && resp.access_token) {
           accessToken = resp.access_token;
+          saveToken(resp.access_token, resp.expires_in);
           el.loginBtn.textContent = "로그인됨 ✓";
           el.pickBtn.disabled = false;
           hideBanner();
-          openPicker(); // 로그인 직후 바로 선택창
+          if (pendingFileId) {
+            // 링크 열기가 로그인을 기다리고 있었음 → 선택창 대신 그 파일을 연다
+            var id = pendingFileId;
+            pendingFileId = null;
+            loadFile(id);
+          } else {
+            openPicker(); // 로그인 직후 바로 선택창
+          }
         } else {
           showBanner("로그인에 실패했습니다. 다시 시도해 주세요.", true);
         }
@@ -313,17 +358,7 @@
     if (!data || data.action !== google.picker.Action.PICKED) return;
     var f = data.docs && data.docs[0];
     if (!f) return;
-    setLoading(true);
-    showHero(false);
-    showViewer(false);
-    hideBanner();
-    fetchDriveFile(f.id, accessToken)
-      .then(render)
-      .catch(function (e) {
-        setLoading(false);
-        showHero(true);
-        showBanner((e && e.message) || "파일을 여는 중 오류가 발생했습니다.", true);
-      });
+    loadFile(f.id);
   }
 
   // ---- 데모 (자격증명 없이 스타일 확인) -----------------------------------
@@ -428,6 +463,14 @@
 
     // 설정 상태에 따른 버튼 활성/비활성
     el.pickBtn.disabled = true; // 로그인 전엔 비활성
+
+    // 같은 탭 세션에서 새로고침한 경우 로그인 상태 복원
+    var savedTok = restoreToken();
+    if (savedTok) {
+      accessToken = savedTok;
+      el.loginBtn.textContent = "로그인됨 ✓";
+      el.pickBtn.disabled = false;
+    }
     if (!HAS_OAUTH) {
       el.loginBtn.disabled = false; // 눌러도 안내가 뜨도록 활성 유지
       el.loginBtn.title = "config.js 설정 필요";
