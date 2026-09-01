@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>htmlbook-drive — 구글 드라이브 HTML/MD 뷰어·편집기</title>
   <meta name="description" content="구글 드라이브의 HTML·Markdown 파일을 탐색하고, 보고, 바로 고치는 뷰어·편집기">
-  <link rel="stylesheet" href="vendor/cm/codemirror.min.css?v=20260902a">
-  <link rel="stylesheet" href="styles.css?v=20260902a">
+  <link rel="stylesheet" href="vendor/cm/codemirror.min.css?v=20260902b">
+  <link rel="stylesheet" href="styles.css?v=20260902b">
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -22,6 +22,7 @@
       <span>htmlbook-drive</span>
     </div>
 
+    <button id="link-toggle" class="icon ghost mobile-only" title="링크로 열기">🔗</button>
     <div class="grow">
       <input id="link-input" type="text" placeholder="드라이브 공유 링크 또는 파일 ID 붙여넣기…" autocomplete="off" spellcheck="false">
       <button id="open-link">열기</button>
@@ -46,7 +47,7 @@
         </div>
         <div id="search-results" class="sec-body hidden"></div>
         <section id="sec-pins" class="tsec hidden">
-          <h3>📌 고정한 폴더</h3>
+          <h3>📌 즐겨찾기</h3>
           <div class="sec-body"></div>
         </section>
         <section id="sec-starred" class="tsec">
@@ -97,19 +98,23 @@
           <span id="doc-name" class="name">문서</span>
           <span class="doc-tools">
             <span id="save-chip" class="chip save-chip hidden" role="button" title="누르면 즉시 저장"></span>
+            <button id="pane-toggle" class="mini pane-toggle" title="편집/미리보기 전환">미리보기</button>
             <nav id="mode-seg" class="seg hidden" aria-label="문서 모드">
               <button data-mode="view" class="active">보기</button>
-              <button data-mode="inline">본문 편집</button>
+              <button data-mode="inline">편집</button>
               <button data-mode="source">소스</button>
             </nav>
-            <label id="script-label" class="hidden script-label">
-              <input id="script-toggle" type="checkbox"> 스크립트
-            </label>
-            <span class="font-ctl">
-              <button id="font-minus" class="icon ghost" title="글자 작게">A−</button>
-              <button id="font-plus" class="icon ghost" title="글자 크게">A+</button>
+            <button id="tools-more" class="icon ghost mobile-only" title="보기 도구">Aa</button>
+            <span id="tool-extra" class="tool-extra">
+              <label id="script-label" class="hidden script-label">
+                <input id="script-toggle" type="checkbox"> 스크립트
+              </label>
+              <span class="font-ctl">
+                <button id="font-minus" class="icon ghost" title="글자 작게">A−</button>
+                <button id="font-plus" class="icon ghost" title="글자 크게">A+</button>
+              </span>
+              <button id="width-btn" class="icon ghost hidden" title="읽기 폭 / 전체 폭 전환" aria-label="폭 전환">⛶</button>
             </span>
-            <button id="width-btn" class="icon ghost hidden" title="읽기 폭 / 전체 폭 전환" aria-label="폭 전환">⛶</button>
             <span id="doc-kind" class="kind">—</span>
           </span>
         </div>
@@ -132,23 +137,23 @@
   </div>
 
   <!-- 설정값 -->
-  <script src="config.js?v=20260902a"></script>
+  <script src="config.js?v=20260902b"></script>
   <!-- 번들 라이브러리 -->
-  <script src="vendor/marked.min.js?v=20260902a"></script>
-  <script src="vendor/purify.min.js?v=20260902a"></script>
-  <script src="vendor/cm/codemirror.min.js?v=20260902a"></script>
-  <script src="vendor/cm/xml.min.js?v=20260902a"></script>
-  <script src="vendor/cm/javascript.min.js?v=20260902a"></script>
-  <script src="vendor/cm/css.min.js?v=20260902a"></script>
-  <script src="vendor/cm/htmlmixed.min.js?v=20260902a"></script>
-  <script src="vendor/cm/markdown.min.js?v=20260902a"></script>
-  <script src="vendor/cm/continuelist.min.js?v=20260902a"></script>
+  <script src="vendor/marked.min.js?v=20260902b"></script>
+  <script src="vendor/purify.min.js?v=20260902b"></script>
+  <script src="vendor/cm/codemirror.min.js?v=20260902b"></script>
+  <script src="vendor/cm/xml.min.js?v=20260902b"></script>
+  <script src="vendor/cm/javascript.min.js?v=20260902b"></script>
+  <script src="vendor/cm/css.min.js?v=20260902b"></script>
+  <script src="vendor/cm/htmlmixed.min.js?v=20260902b"></script>
+  <script src="vendor/cm/markdown.min.js?v=20260902b"></script>
+  <script src="vendor/cm/continuelist.min.js?v=20260902b"></script>
   <!-- 구글 라이브러리(로그인 + Picker 폴백) -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="https://apis.google.com/js/api.js" async defer></script>
   <!-- 앱 -->
-  <script src="app.js?v=20260902a"></script>
-  <script src="browser.js?v=20260902a"></script>
-  <script src="editor.js?v=20260902a"></script>
+  <script src="app.js?v=20260902b"></script>
+  <script src="browser.js?v=20260902b"></script>
+  <script src="editor.js?v=20260902b"></script>
 </body>
 </html>

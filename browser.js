@@ -76,7 +76,9 @@
   }
 
   // ---- 트리 렌더링 --------------------------------------------------------
-  function nodeEl(f, depth) {
+  // opts.pinnable=false 면 📌 버튼을 붙이지 않는다(즐겨찾기 섹션 안 등)
+  function nodeEl(f, depth, opts) {
+    opts = opts || {};
     var folder = isFolder(f);
     var div = document.createElement("div");
     div.className = "tnode " + (folder ? "folder" : "file");
@@ -90,6 +92,26 @@
       : '<span class="caret"></span><span class="ticon">' + fileIcon(f.name) + '</span><span class="tname"></span>';
     row.querySelector(".tname").textContent = f.name;
     div.appendChild(row);
+
+    // 폴더 즐겨찾기: 트리 어디서든 📌 한 번으로 사이드바 상단에 고정
+    if (folder && opts.pinnable !== false) {
+      var pin = document.createElement("button");
+      var already = getPins().some(function (x) { return x.id === realId(f); });
+      pin.className = "tact";
+      pin.title = already ? "이미 즐겨찾기에 있음" : "즐겨찾기에 추가";
+      pin.textContent = already ? "✓" : "📌";
+      pin.addEventListener("click", function (e) {
+        e.stopPropagation();
+        var pins = getPins();
+        if (!pins.some(function (x) { return x.id === realId(f); })) {
+          pins.push({ id: realId(f), name: f.name });
+          setPins(pins);
+        }
+        pin.textContent = "✓";
+        pin.title = "즐겨찾기에 추가됨";
+      });
+      row.appendChild(pin);
+    }
 
     if (folder) {
       var kids = document.createElement("div");
@@ -154,7 +176,7 @@
     body.innerHTML = "";
     pins.forEach(function (p) {
       var f = { id: p.id, name: p.name, mimeType: FOLDER };
-      var node = nodeEl(f, 0);
+      var node = nodeEl(f, 0, { pinnable: false });
       var un = document.createElement("button");
       un.className = "tact";
       un.title = "고정 해제";
@@ -226,25 +248,7 @@
         return;
       }
       items.forEach(function (f) {
-        var node = nodeEl(f, 0);
-        if (isFolder(f)) {
-          var pin = document.createElement("button");
-          pin.className = "tact";
-          pin.title = "사이드바에 고정";
-          pin.textContent = "📌";
-          pin.addEventListener("click", function (e) {
-            e.stopPropagation();
-            var pins = getPins();
-            if (!pins.some(function (x) { return x.id === realId(f); })) {
-              pins.push({ id: realId(f), name: f.name });
-              setPins(pins);
-            }
-            searchInput.value = "";
-            showSearch(false);
-          });
-          node.querySelector(".trow").appendChild(pin);
-        }
-        searchResults.appendChild(node);
+        searchResults.appendChild(nodeEl(f, 0)); // 폴더에는 nodeEl 이 📌 버튼을 붙인다
       });
     }).catch(function () { searchResults.innerHTML = '<div class="tmsg">검색에 실패했습니다</div>'; });
   }

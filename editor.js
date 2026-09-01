@@ -320,6 +320,128 @@
   }
 
   // ==========================================================================
+  // 인라인(문단) 편집 — Markdown 전용
+  // 렌더된 화면에서 문단(블록)을 탭하면 그 자리가 마크다운 입력창으로 바뀌고,
+  // 벗어나면 다시 렌더링된다. marked.lexer 의 토큰 raw 를 그대로 조각으로 쓰므로
+  // 조각을 이어 붙이면 원본과 정확히 일치한다(서식 손실 없음).
+  // ==========================================================================
+  var mdChunks = null;      // [{raw}] — join === doc.text
+  var mdInlineActive = false;
+
+  function scrollBox() { return document.getElementById("content"); }
+
+  function renderMdChunks() {
+    var d = H.state.doc;
+    var tokens = window.marked.lexer(d.text);
+    mdChunks = [];
+    el.mdBody.innerHTML = "";
+    el.mdBody.classList.add("md-editing");
+    for (var i = 0; i < tokens.length; i++) {
+      var tok = tokens[i];
+      mdChunks.push({ raw: tok.raw });
+      var div = document.createElement("div");
+      div.className = "md-chunk" + (tok.type === "space" ? " md-space" : "");
+      div.setAttribute("data-ci", String(mdChunks.length - 1));
+      if (tok.type !== "space") {
+        var arr = [tok];
+        arr.links = tokens.links;
+        div.innerHTML = window.DOMPurify.sanitize(window.marked.parser(arr), { ADD_ATTR: ["target"] });
+      }
+      el.mdBody.appendChild(div);
+    }
+    if (!mdChunks.length) {
+      mdChunks.push({ raw: "" });
+      var empty = document.createElement("div");
+      empty.className = "md-chunk md-empty";
+      empty.setAttribute("data-ci", "0");
+      empty.textContent = "여기를 탭해서 내용을 입력하세요";
+      el.mdBody.appendChild(empty);
+    }
+  }
+
+  function openChunkEditor(div) {
+    if (div.querySelector("textarea")) return;
+    var ci = Number(div.getAttribute("data-ci"));
+    var chunk = mdChunks && mdChunks[ci];
+    if (!chunk) return;
+    // 블록 구분(빈 줄)은 chunk 자신 또는 이웃 space 청크가 들고 있다.
+    // 끝의 빈 줄은 입력창에서 빼고 저장할 때 그대로 되붙인다(없으면 안 붙인다).
+    var isSpace = /^\s*$/.test(chunk.raw); // 블록 사이 빈 줄 청크(새 문단 끼워 넣기)
+    var suffix = (chunk.raw.match(/\n*$/) || [""])[0];
+    var body = isSpace ? "" : chunk.raw.slice(0, chunk.raw.length - suffix.length);
+
+    var ta = document.createElement("textarea");
+    ta.className = "md-edit";
+    ta.value = body;
+    if (isSpace) ta.placeholder = "새 문단 입력…";
+    ta.setAttribute("spellcheck", "false");
+    div.innerHTML = "";
+    div.classList.add("editing");
+    div.appendChild(ta);
+    var fit = function () { ta.style.height = "auto"; ta.style.height = Math.max(44, ta.scrollHeight + 2) + "px"; };
+    fit();
+    ta.focus();
+    // 커서를 끝이 아니라 시작에 두면 문단 앞부분 수정이 잦은 실사용에 편하다
+    try { ta.setSelectionRange(0, 0); } catch (e) {}
+    ta.addEventListener("input", fit);
+
+    var done = false;
+    function commit(cancel) {
+      if (done) return; done = true;
+      var d = H.state.doc;
+      if (!cancel) {
+        var v = ta.value;
+        var newRaw;
+        if (isSpace) {
+          // 빈 줄 청크에 내용을 넣으면 양쪽 구분을 유지한 채 새 블록으로 끼운다
+          newRaw = v.trim().length ? "\n\n" + v.replace(/^\n+|\n+$/g, "") + "\n\n" : chunk.raw;
+        } else {
+          newRaw = v.replace(/\s+$/, "").length ? v.replace(/\n+$/, "") + suffix : "";
+        }
+        if (newRaw !== chunk.raw) {
+          chunk.raw = newRaw;
+          var text = mdChunks.map(function (c) { return c.raw; }).join("");
+          markDirty(text);
+        }
+      }
+      var box = scrollBox();
+      var st = box ? box.scrollTop : 0;
+      renderMdChunks(); // 구조가 바뀔 수 있으니 전체 재렌더(스크롤 유지)
+      if (box) box.scrollTop = st;
+    }
+    ta.addEventListener("blur", function () { commit(false); });
+    ta.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") { e.preventDefault(); commit(true); }
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") { e.preventDefault(); ta.blur(); }
+    });
+  }
+
+  el.mdBody.addEventListener("click", function (e) {
+    if (!mdInlineActive) return;
+    var a = e.target.closest && e.target.closest("a[href]");
+    if (a) e.preventDefault(); // 편집 중에는 링크 이동 대신 편집
+    var div = e.target.closest && e.target.closest(".md-chunk");
+    if (div) openChunkEditor(div);
+  });
+
+  function enterInlineMd() {
+    mdInlineActive = true;
+    el.mdBody.classList.remove("hidden");
+    el.htmlFrame.classList.add("hidden");
+    renderMdChunks();
+    H.showBanner("편집: 문단을 <b>탭(클릭)하면 그 자리에서 바로</b> 고칠 수 있습니다. " +
+      "다른 곳을 누르면 반영되고, 멈추면 자동 저장됩니다. (Esc 취소, " +
+      "블록 사이 빈 줄을 탭하면 새 문단을 끼워 넣습니다)");
+  }
+
+  function exitInlineMd() {
+    mdInlineActive = false;
+    mdChunks = null;
+    el.mdBody.classList.remove("md-editing");
+    H.hideBanner();
+  }
+
+  // ==========================================================================
   // 소스 편집 — CodeMirror + 실시간 미리보기
   // ==========================================================================
   var previewTimer = null;
@@ -398,6 +520,8 @@
 
   function exitSource() {
     document.body.classList.remove("split-edit");
+    document.body.classList.remove("show-preview");
+    if (el.paneToggle) el.paneToggle.textContent = "미리보기";
     editorWrap.classList.add("hidden");
     if (previewTimer) clearTimeout(previewTimer);
   }
@@ -412,7 +536,7 @@
     if (prev === m) return;
 
     // 이전 모드 정리 (미저장분은 상태에 이미 반영되어 있음)
-    if (prev === "inline") exitInline();
+    if (prev === "inline") { if (mdInlineActive) exitInlineMd(); else exitInline(); }
     if (prev === "source") {
       if (cm) { var t = cm.getValue(); if (t !== d.text) markDirty(t); }
       exitSource();
@@ -423,8 +547,8 @@
       H.render(d, { preview: true });
       H.hideBanner();
     } else if (m === "inline") {
-      if (d.type !== "html") { H.state.mode = "view"; return; }
-      enterInline();
+      if (d.type === "html") enterInline();
+      else enterInlineMd();
     } else if (m === "source") {
       enterSource();
     }
@@ -432,7 +556,7 @@
 
   function closeIfOpen() {
     if (save.dirty && !save.conflict) doSave({ skipVersionCheck: true });
-    if (H.state.mode === "inline") exitInline();
+    if (H.state.mode === "inline") { if (mdInlineActive) exitInlineMd(); else exitInline(); }
     if (H.state.mode === "source") exitSource();
     H.state.mode = "view";
     save.dirty = false;

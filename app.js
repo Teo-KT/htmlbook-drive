@@ -31,6 +31,10 @@
   // ---- DOM 참조 -----------------------------------------------------------
   var el = {
     sidebarToggle: document.getElementById("sidebar-toggle"),
+    linkToggle: document.getElementById("link-toggle"),
+    toolsMore: document.getElementById("tools-more"),
+    paneToggle: document.getElementById("pane-toggle"),
+    docTools: document.querySelector(".doc-tools"),
     linkInput: document.getElementById("link-input"),
     openLinkBtn: document.getElementById("open-link"),
     loginBtn: document.getElementById("login-btn"),
@@ -573,9 +577,8 @@
       var m = btns[i].getAttribute("data-mode");
       btns[i].classList.toggle("active", state.mode === m);
       if (m !== "view") btns[i].disabled = !canEdit;
-      // 본문(인라인) 편집은 HTML 만. 마크다운은 소스 편집이 곧 편집.
-      if (m === "inline") btns[i].classList.toggle("hidden", !doc || doc.type !== "html");
-      if (m === "source") btns[i].textContent = (doc && doc.type === "md") ? "편집" : "소스";
+      // "편집" = 보는 화면에서 바로 고치기(HTML 은 탭-수정, MD 는 문단 탭-수정).
+      // "소스" = 코드 편집기 + 미리보기 분할.
     }
     el.modeSeg.title = canEdit ? "" :
       (CAN_WRITE ? "이 파일에는 수정 권한이 없습니다" : "편집하려면 config.js 의 SCOPE_MODE 를 \"full\" 로 설정하세요");
@@ -712,6 +715,26 @@
     });
     el.fontMinus.addEventListener("click", function () { setReadScale(state.readScale - 10); });
     el.fontPlus.addEventListener("click", function () { setReadScale(state.readScale + 10); });
+    // 모바일: 링크 입력줄은 🔗 버튼으로 펼친다(상단바 공간 절약)
+    el.linkToggle.addEventListener("click", function () {
+      var on = document.body.classList.toggle("show-link");
+      if (on) el.linkInput.focus();
+    });
+    // 모바일: 보기 도구(스크립트·글자 크기·폭)는 Aa 버튼의 드롭다운으로
+    el.toolsMore.addEventListener("click", function (e) {
+      e.stopPropagation();
+      el.docTools.classList.toggle("tools-open");
+    });
+    document.addEventListener("click", function (e) {
+      if (el.docTools.classList.contains("tools-open") && !el.docTools.contains(e.target)) {
+        el.docTools.classList.remove("tools-open");
+      }
+    });
+    // 모바일 소스 모드: 편집 ↔ 미리보기 전체 화면 전환
+    el.paneToggle.addEventListener("click", function () {
+      var on = document.body.classList.toggle("show-preview");
+      el.paneToggle.textContent = on ? "편집" : "미리보기";
+    });
     el.sidebarToggle.addEventListener("click", toggleSidebar);
     el.sidebarScrim.addEventListener("click", function () { setSidebar(false); });
     el.modeSeg.addEventListener("click", function (e) {

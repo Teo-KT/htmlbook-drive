@@ -295,6 +295,9 @@ main#content {
 .doc-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .doc-tools .icon { padding: 4px 8px; font-size: 12px; }
 .font-ctl { display: inline-flex; gap: 2px; }
+.mobile-only { display: none; }
+.tool-extra { display: inline-flex; align-items: center; gap: 8px; }
+.pane-toggle { display: none; }
 .script-label { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; cursor: pointer; }
 .viewer .doc-head .kind {
   font-family: var(--font-mono); font-size: 11px; padding: 2px 8px;
@@ -454,6 +457,35 @@ body.split-edit .markdown-body { padding: 28px 30px 48px; }
   border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 5px; background: var(--bg-soft);
 }
 
+/* ------------------- 문단 제자리 편집(Markdown "편집" 모드) ------------------- */
+.md-editing .md-chunk {
+  border-radius: 8px;
+  cursor: text;
+  outline: 1px dashed transparent;
+  outline-offset: 4px;
+  transition: outline-color .12s, background .12s;
+}
+.md-editing .md-chunk:hover { outline-color: rgba(47, 111, 235, .45); }
+.md-editing .md-chunk.md-space { min-height: 16px; border-radius: 6px; }
+.md-editing .md-chunk.md-space:hover { background: var(--bg-soft); outline-color: rgba(47, 111, 235, .3); }
+.md-editing .md-chunk.editing { outline: none; }
+.md-chunk.md-empty { color: var(--text-soft); font-family: var(--font-ui); font-size: 14px; padding: 14px; }
+textarea.md-edit {
+  display: block;
+  width: 100%;
+  border: 1.5px solid var(--accent);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1.65;
+  padding: 10px 12px;
+  resize: none;
+  outline: none;
+  box-sizing: border-box;
+}
+
 footer {
   max-width: var(--max-read);
   margin: 28px auto 0;
@@ -463,8 +495,20 @@ footer {
 }
 footer a { color: var(--link); text-decoration: none; }
 
+/* iOS 노치·홈 인디케이터 안전 영역 */
+@supports (padding: env(safe-area-inset-left)) {
+  .topbar { padding-left: calc(14px + env(safe-area-inset-left)); padding-right: calc(14px + env(safe-area-inset-right)); }
+  .sidebar { padding-bottom: env(safe-area-inset-bottom); }
+}
+
 /* ------------------------------ 모바일 ------------------------------ */
 @media (max-width: 900px) {
+  .mobile-only { display: inline-flex; }
+
+  /* 상단바: 링크 입력줄은 🔗 버튼으로 펼친다 */
+  .topbar .grow { display: none; }
+  body.show-link .topbar .grow { display: flex; flex: 1 1 100%; order: 10; }
+
   /* 사이드바를 오버레이 서랍으로 */
   .sidebar {
     position: fixed;
@@ -479,21 +523,37 @@ footer a { color: var(--link); text-decoration: none; }
     z-index: 40;
     background: rgba(0, 0, 0, .35);
   }
-  /* 소스 편집: 위(편집)/아래(미리보기) 세로 분할 */
-  body.split-edit .doc-body { flex-direction: column; }
-  body.split-edit .editor-wrap {
-    flex: 1 1 50%;
-    border-right: 0;
-    border-bottom: 1px solid var(--border);
+  /* 터치 타깃: 트리 행을 키우고, 📌/✕ 는 항상 보이게(호버가 없으므로) */
+  .trow { padding: 8px 10px 8px calc(10px + var(--depth) * 14px); font-size: 13.5px; }
+  .tact { visibility: visible; opacity: .75; padding: 2px 6px; }
+
+  /* 문서 도구: 보기 도구(스크립트·글자·폭)는 Aa 드롭다운으로 접는다 */
+  .viewer .doc-head { position: relative; }
+  .viewer .doc-head .kind { display: none; }
+  .tool-extra { display: none; }
+  .doc-tools.tools-open .tool-extra {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 12px;
+    position: absolute; top: calc(100% + 4px); right: 8px; z-index: 25;
+    background: var(--bg-elev); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 14px; box-shadow: var(--shadow);
   }
-  body.split-edit .view-wrap { flex: 1 1 50%; }
+
+  /* 소스 편집: 분할 대신 편집/미리보기 전체 화면 전환(pane-toggle 버튼) */
+  body.split-edit .doc-body { flex-direction: column; }
+  body.split-edit .pane-toggle { display: inline-flex; }
+  body.split-edit .editor-wrap { flex: 1 1 auto; border-right: 0; }
+  body.split-edit .view-wrap { flex: 1 1 auto; }
+  body.split-edit:not(.show-preview) .view-wrap { display: none; }
+  body.split-edit.show-preview .editor-wrap { display: none; }
 }
 
 @media (max-width: 600px) {
   .markdown-body { padding: 26px 20px 40px; font-size: calc(16.5px * var(--read-scale)); }
-  .topbar { gap: 8px; padding: 8px 10px; }
+  .topbar {
+    gap: 8px;
+    padding: 8px calc(10px + env(safe-area-inset-right, 0px)) 8px calc(10px + env(safe-area-inset-left, 0px));
+  }
   .brand span:not(.logo) { display: none; }
-  .topbar .grow { flex: 1 1 100%; order: 10; }
   button { font-size: 13px; padding: 7px 10px; }
   main#content { padding: 16px 10px 60px; }
   .viewer .doc-head .name { max-width: 100%; }
