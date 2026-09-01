@@ -696,7 +696,13 @@
     });
     el.demoMd.addEventListener("click", function () { openDemo("md"); });
     el.demoHtml.addEventListener("click", function () { openDemo("html"); });
+    // 스크립트 기본 허용: 본문을 JS 로 그리는 앱형 HTML(탭·차트·인터랙션)이
+    // 원본 그대로 동작한다(htmlbook.io 의 독립 페이지 방식). 샌드박스(불투명
+    // 출처)라 문서 스크립트는 이 페이지·드라이브 토큰에 접근할 수 없다.
+    try { el.scriptToggle.checked = localStorage.getItem("hbd-scripts") !== "0"; }
+    catch (e) { el.scriptToggle.checked = true; }
     el.scriptToggle.addEventListener("change", function () {
+      try { localStorage.setItem("hbd-scripts", el.scriptToggle.checked ? "1" : "0"); } catch (e) {}
       if (lastDoc && state.mode === "view") renderHtml(lastDoc.text);
     });
     el.widthBtn.addEventListener("click", function () {
